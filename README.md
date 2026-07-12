@@ -1,0 +1,1 @@
+# png-auto-crop
