@@ -3,125 +3,103 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PNG 자동 크롭 Precision</title>
+  <title>PNG 자동 크롭 Smart</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main class="app">
-  <header>
+  <header class="hero">
     <p class="brand">MiriCanvas AI Studio</p>
-    <h1>PNG 자동 크롭 Precision</h1>
-    <p class="lead">격자 위치를 보정한 뒤 각 칸의 실제 알파·객체 영역을 다시 계산하여 가로와 세로를 각각 타이트하게 크롭합니다.</p>
+    <h1>PNG 자동 크롭 Smart</h1>
+    <p>배열은 위치만 나누고, 각 칸의 객체는 서로 다른 비율로 독립 분석해 개별 타이트 크롭합니다.</p>
   </header>
 
-  <section class="rules">
-    <b>미리캔버스 규정 검사</b>
-    <span>PNG</span><span>120dpi 이상</span><span>아이콘 700~9800px</span>
-    <span>일러스트 1500~9800px</span><span>50MB 이하</span>
-  </section>
-
-  <section class="panel">
-    <label class="drop" id="dropZone" for="fileInput">
-      <span class="big">🖼️</span>
-      <b>이미지를 드래그하거나 클릭해서 선택</b>
-      <small>PNG, JPG, JPEG, WEBP · 여러 장 업로드 가능</small>
-      <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
-    </label>
-
-    <div class="settings">
-      <label>배열
+  <section class="panel compact">
+    <div class="preset-row">
+      <label>
+        배열 선택
         <select id="gridSelect">
           <option value="1">1개 이미지</option>
           <option value="2">2×2 · 4개</option>
-          <option value="3">3×3 · 9개</option>
-          <option value="4" selected>4×4 · 16개</option>
+          <option value="3" selected>3×3 · 9개</option>
+          <option value="4">4×4 · 16개</option>
         </select>
       </label>
 
-      <label>격자 보정
-        <select id="gridMode">
-          <option value="smart" selected>스마트 · 빈 공간 기준 경계 보정</option>
-          <option value="fixed">고정 · 정확한 동일 격자</option>
-        </select>
-      </label>
-
-      <label>요소 분류
+      <label>
+        요소 분류
         <select id="assetType">
           <option value="icon">아이콘·이모티콘·캐릭터</option>
           <option value="illustration" selected>그 외 일러스트</option>
         </select>
       </label>
 
-      <label>크롭 모드
-        <select id="cropMode">
-          <option value="safe">안전 · 잘림 방지</option>
+      <label>
+        크롭 스타일
+        <select id="cropStyle">
+          <option value="safe">안전</option>
           <option value="balanced" selected>균형 · 추천</option>
-          <option value="tight">타이트 · 최소 여백</option>
+          <option value="tight">타이트</option>
         </select>
       </label>
+    </div>
 
-      <label>여백(px)
-        <input id="marginInput" type="number" value="10" min="0" max="100">
-      </label>
-
-      <label>출력 DPI
-        <select id="dpiSelect">
-          <option value="120" selected>120dpi</option>
-          <option value="150">150dpi</option>
-          <option value="300">300dpi</option>
-        </select>
-      </label>
-
-      <label>출력 크기
-        <select id="sizeSelect">
-          <option value="auto" selected>자동 · 규정 최소값</option>
-          <option value="2000">최소 2000px</option>
-          <option value="3000">최소 3000px</option>
-          <option value="4000">최소 4000px</option>
-        </select>
-      </label>
-
-      <label class="check"><input id="removeBg" type="checkbox" checked> 불투명 배경 자동 제거</label>
-      <label class="check"><input id="rulesMode" type="checkbox" checked> 규정 검사 및 크기 자동 보정</label>
+    <div class="preset-card">
+      <strong>현재 추천 설정</strong>
+      <div id="presetSummary"></div>
+      <button id="restorePreset" type="button">추천값으로 복원</button>
     </div>
 
     <details>
-      <summary>고급 설정</summary>
+      <summary>세부 설정 조절</summary>
       <div class="settings">
-        <label>배경 감지 민감도
-          <input id="tolerance" type="range" min="10" max="100" value="34">
-          <output id="toleranceOut">34</output>
+        <label>여백(px)<input id="margin" type="number" min="0" max="100"></label>
+        <label>배경 민감도<input id="tolerance" type="range" min="10" max="100"><output id="toleranceOut"></output></label>
+        <label>부속물 병합 거리<input id="merge" type="range" min="0" max="40"><output id="mergeOut"></output></label>
+        <label>알파 경계 기준<input id="alpha" type="range" min="1" max="80"><output id="alphaOut"></output></label>
+        <label>출력 DPI
+          <select id="dpi">
+            <option value="120">120dpi</option>
+            <option value="150">150dpi</option>
+            <option value="300">300dpi</option>
+          </select>
         </label>
-        <label>부속물 병합 거리
-          <input id="mergeDistance" type="range" min="0" max="40" value="16">
-          <output id="mergeOut">16%</output>
+        <label>출력 크기
+          <select id="sizeMode">
+            <option value="original">원본 크롭 크기 유지</option>
+            <option value="auto" selected>규정 최소값만 보정</option>
+            <option value="long3000">긴 변 3000px</option>
+          </select>
         </label>
-        <label>알파 경계 기준
-          <input id="alphaThreshold" type="range" min="1" max="80" value="18">
-          <output id="alphaOut">18</output>
-        </label>
+        <label class="check"><input id="removeBg" type="checkbox"> 불투명 배경 자동 제거</label>
+        <label class="check"><input id="rulesMode" type="checkbox" checked> 미리캔버스 규정 검사</label>
       </div>
     </details>
   </section>
 
   <section class="panel">
+    <label class="drop" id="dropZone" for="fileInput">
+      <span>🖼️</span>
+      <b>이미지를 드래그하거나 클릭해서 선택</b>
+      <small>PNG, JPG, JPEG, WEBP · 여러 장 가능</small>
+      <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
+    </label>
+  </section>
+
+  <section class="panel">
     <div class="head">
       <div><h2>업로드된 이미지</h2><span id="sourceCount">0장</span></div>
-      <div>
-        <button id="sourceAll">전체 선택</button>
-        <button id="sourceNone">전체 해제</button>
-        <button id="sourceDelete" class="danger">선택 삭제</button>
-      </div>
+      <div><button id="sourceAll">전체 선택</button><button id="sourceNone">전체 해제</button><button id="sourceDelete" class="danger">선택 삭제</button></div>
     </div>
     <div id="sourceGrid" class="grid empty">이미지를 추가하면 미리보기가 표시됩니다.</div>
   </section>
 
-  <section class="panel hidden" id="resultPanel">
+  <section id="resultPanel" class="panel hidden">
     <div class="head">
-      <div><h2>크롭 결과</h2><span id="resultCount">0개</span></div>
+      <div><h2>개별 타이트 크롭 결과</h2><span id="resultCount">0개</span></div>
       <div><button id="resultAll">전체 선택</button><button id="resultNone">전체 해제</button></div>
     </div>
-    <p class="note">미리보기의 체크무늬는 투명 영역입니다. 카드의 실제 픽셀 크기도 함께 확인하세요.</p>
+    <p class="note">각 결과는 서로 다른 가로·세로 비율과 크기를 유지합니다. 체크무늬는 투명 영역입니다.</p>
     <div id="resultGrid" class="grid"></div>
   </section>
 
