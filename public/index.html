@@ -3,82 +3,142 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PNG 자동 크롭</title>
+  <title>미리캔버스 PNG 자동 크롭</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main class="app">
-  <header>
-    <p class="eyebrow">MiriCanvas AI Studio</p>
-    <h1>PNG 자동 크롭</h1>
-    <p>이미지를 업로드하고 원하는 결과만 체크해 PNG 또는 ZIP으로 저장하세요.</p>
-  </header>
+  <main class="app-shell">
+    <header class="hero">
+      <p class="eyebrow">MiriCanvas AI Studio</p>
+      <h1>PNG 자동 크롭</h1>
+      <p>
+        합본 이미지를 분리하고, 선택한 기준에 맞춰 크기·DPI·파일 용량을 검사한 뒤
+        미리캔버스 업로드용 PNG와 ZIP으로 저장합니다.
+      </p>
+    </header>
 
-  <section class="panel">
-    <label id="dropZone" class="drop-zone" for="fileInput">
-      <span class="icon">🖼️</span>
-      <strong>이미지를 드래그하거나 클릭해서 선택</strong>
-      <span>PNG, JPG, JPEG, WEBP · 여러 장 가능</span>
-      <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
-    </label>
+    <section class="rules">
+      <strong>미리캔버스 규정 모드</strong>
+      <ul>
+        <li>PNG · 최소 120dpi</li>
+        <li>아이콘·이모티콘·캐릭터: 700~9800px</li>
+        <li>그 외 일러스트: 1500~9800px</li>
+        <li>최대 파일 크기: 50MB</li>
+        <li>그라데이션·3D 결과는 PNG로 저장</li>
+      </ul>
+    </section>
 
-    <div class="settings">
-      <label>배열 선택
-        <select id="gridSelect">
-          <option value="1">1개 이미지 · 전체 타이트 크롭</option>
-          <option value="2">2×2 · 4개 요소</option>
-          <option value="3" selected>3×3 · 9개 요소</option>
-          <option value="4">4×4 · 16개 요소</option>
-        </select>
+    <section class="panel">
+      <label class="drop-zone" id="dropZone" for="fileInput">
+        <span class="drop-icon">🖼️</span>
+        <strong>이미지를 드래그하거나 클릭해서 선택</strong>
+        <span>PNG, JPG, JPEG, WEBP · 여러 장 동시 업로드 가능</span>
+        <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
       </label>
-      <label>여백(px)
-        <input id="marginInput" type="number" value="12" min="0" max="100">
-      </label>
-      <label>배경 감지 강도
-        <input id="toleranceInput" type="range" value="42" min="10" max="100">
-        <span id="toleranceValue">42</span>
-      </label>
-      <label class="inline-check">
-        <input id="removeBackground" type="checkbox" checked>
-        배경을 투명하게 처리
-      </label>
-    </div>
-  </section>
 
-  <section class="panel">
-    <div class="section-head">
-      <div><h2>업로드된 이미지</h2><span id="uploadCount" class="badge">0장</span></div>
-      <div class="actions">
-        <button id="sourceSelectAll">전체 선택</button>
-        <button id="sourceClearAll">전체 해제</button>
-        <button id="deleteSelectedSources" class="danger">선택 삭제</button>
+      <div class="settings-grid">
+        <label>
+          배열 선택
+          <select id="gridSelect">
+            <option value="1">1개 이미지 · 전체 타이트 크롭</option>
+            <option value="2">2×2 · 4개 요소</option>
+            <option value="3" selected>3×3 · 9개 요소</option>
+            <option value="4">4×4 · 16개 요소</option>
+          </select>
+        </label>
+
+        <label>
+          요소 분류
+          <select id="assetTypeSelect">
+            <option value="icon" selected>아이콘·이모티콘·캐릭터 (최소 700px)</option>
+            <option value="illustration">그 외 일러스트 (최소 1500px)</option>
+          </select>
+        </label>
+
+        <label>
+          크롭 여백(px)
+          <input id="marginInput" type="number" value="16" min="0" max="150">
+        </label>
+
+        <label>
+          배경 감지 강도
+          <input id="toleranceInput" type="range" value="38" min="10" max="100">
+          <span id="toleranceValue">38</span>
+        </label>
+
+        <label>
+          출력 DPI
+          <select id="dpiSelect">
+            <option value="120" selected>120dpi · 미리캔버스 최소 기준</option>
+            <option value="150">150dpi</option>
+            <option value="300">300dpi</option>
+          </select>
+        </label>
+
+        <label>
+          출력 크기
+          <select id="sizeModeSelect">
+            <option value="auto" selected>자동 · 분류별 최소 크기 보정</option>
+            <option value="2000">최소 2000px</option>
+            <option value="3000">최소 3000px</option>
+            <option value="4000">최소 4000px</option>
+          </select>
+        </label>
+
+        <label class="check-option">
+          <input id="removeBackground" type="checkbox" checked>
+          단색·그라데이션 배경을 투명하게 처리
+        </label>
+
+        <label class="check-option">
+          <input id="miricanvasMode" type="checkbox" checked>
+          미리캔버스 규정 검사 및 자동 보정
+        </label>
       </div>
-    </div>
-    <div id="sourceGrid" class="grid empty">이미지를 추가하면 미리보기가 표시됩니다.</div>
-  </section>
+    </section>
 
-  <section id="resultPanel" class="panel hidden">
-    <div class="section-head">
-      <div><h2>크롭 결과</h2><span id="resultCount" class="badge">0개</span></div>
-      <div class="actions">
-        <button id="resultSelectAll">전체 선택</button>
-        <button id="resultClearAll">전체 해제</button>
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>업로드된 이미지</h2>
+          <span id="uploadCount" class="count-badge">0장</span>
+        </div>
+        <div class="small-actions">
+          <button type="button" class="ghost" id="sourceSelectAll">전체 선택</button>
+          <button type="button" class="ghost" id="sourceClearAll">전체 해제</button>
+          <button type="button" class="ghost danger" id="deleteSelectedSources">선택 삭제</button>
+        </div>
       </div>
-    </div>
-    <div id="resultGrid" class="grid"></div>
-  </section>
+      <div id="sourceGrid" class="card-grid empty-state">이미지를 추가하면 여기에 미리보기가 표시됩니다.</div>
+    </section>
 
-  <div class="bottom-bar">
-    <button id="processButton" class="primary">▶ 처리 시작</button>
-    <button id="chooseFolderButton">📁 저장 폴더 선택</button>
-    <button id="addFilesButton">＋ 파일 추가</button>
-    <button id="downloadSelectedButton" disabled>⬇ 선택 다운로드</button>
-    <button id="downloadZipButton" disabled>📦 선택 ZIP</button>
-    <button id="resetButton" class="danger">↻ 초기화</button>
-  </div>
-  <p id="status" class="status">이미지를 추가해주세요.</p>
-</main>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="script.js"></script>
+    <section class="panel hidden" id="resultPanel">
+      <div class="section-head">
+        <div>
+          <h2>크롭 결과</h2>
+          <span id="resultCount" class="count-badge">0개</span>
+        </div>
+        <div class="small-actions">
+          <button type="button" class="ghost" id="resultSelectAll">전체 선택</button>
+          <button type="button" class="ghost" id="resultClearAll">전체 해제</button>
+        </div>
+      </div>
+      <div id="resultGrid" class="card-grid"></div>
+    </section>
+
+    <div class="bottom-bar">
+      <button id="processButton" class="primary" type="button">▶ 처리 시작</button>
+      <button id="chooseFolderButton" class="secondary" type="button">📁 저장 폴더 선택</button>
+      <button id="addFilesButton" class="secondary" type="button">＋ 파일 추가</button>
+      <button id="downloadSelectedButton" class="secondary" type="button" disabled>⬇ 선택 다운로드</button>
+      <button id="downloadZipButton" class="secondary" type="button" disabled>📦 선택 ZIP</button>
+      <button id="resetButton" class="secondary danger" type="button">↻ 초기화</button>
+    </div>
+
+    <p id="status" class="status">이미지를 추가해주세요.</p>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
