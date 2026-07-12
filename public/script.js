@@ -1,709 +1,193 @@
-const fileInput = document.getElementById("fileInput");
-const dropZone = document.getElementById("dropZone");
-const gridSelect = document.getElementById("gridSelect");
-const assetTypeSelect = document.getElementById("assetTypeSelect");
-const marginInput = document.getElementById("marginInput");
-const toleranceInput = document.getElementById("toleranceInput");
-const toleranceValue = document.getElementById("toleranceValue");
-const removeBackgroundInput = document.getElementById("removeBackground");
-const miricanvasMode = document.getElementById("miricanvasMode");
-const dpiSelect = document.getElementById("dpiSelect");
-const sizeModeSelect = document.getElementById("sizeModeSelect");
+const $=id=>document.getElementById(id);
+const fileInput=$("fileInput"),dropZone=$("dropZone"),gridSelect=$("gridSelect"),gridMode=$("gridMode");
+const assetType=$("assetType"),cropMode=$("cropMode"),marginInput=$("marginInput"),dpiSelect=$("dpiSelect"),sizeSelect=$("sizeSelect");
+const removeBg=$("removeBg"),rulesMode=$("rulesMode"),tolerance=$("tolerance"),mergeDistance=$("mergeDistance"),alphaThreshold=$("alphaThreshold");
+const sourceGrid=$("sourceGrid"),resultGrid=$("resultGrid"),resultPanel=$("resultPanel"),status=$("status");
+let sources=[],results=[];
 
-const sourceGrid = document.getElementById("sourceGrid");
-const sourceSelectAll = document.getElementById("sourceSelectAll");
-const sourceClearAll = document.getElementById("sourceClearAll");
-const deleteSelectedSources = document.getElementById("deleteSelectedSources");
-const uploadCount = document.getElementById("uploadCount");
-
-const resultPanel = document.getElementById("resultPanel");
-const resultGrid = document.getElementById("resultGrid");
-const resultSelectAll = document.getElementById("resultSelectAll");
-const resultClearAll = document.getElementById("resultClearAll");
-const resultCount = document.getElementById("resultCount");
-
-const processButton = document.getElementById("processButton");
-const chooseFolderButton = document.getElementById("chooseFolderButton");
-const addFilesButton = document.getElementById("addFilesButton");
-const downloadSelectedButton = document.getElementById("downloadSelectedButton");
-const downloadZipButton = document.getElementById("downloadZipButton");
-const resetButton = document.getElementById("resetButton");
-const statusText = document.getElementById("status");
-
-let sourceItems = [];
-let resultItems = [];
-let directoryHandle = null;
-
-toleranceInput.addEventListener("input", () => {
-  toleranceValue.textContent = toleranceInput.value;
+[["tolerance","toleranceOut",""],["mergeDistance","mergeOut","%"],["alphaThreshold","alphaOut",""]].forEach(([i,o,s])=>{
+  $(i).addEventListener("input",()=>$(o).textContent=$(i).value+s);
 });
 
-fileInput.addEventListener("change", () => addFiles(fileInput.files));
-addFilesButton.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change",()=>addFiles(fileInput.files));
+$("addFiles").addEventListener("click",()=>fileInput.click());
+["dragenter","dragover"].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.add("over")}));
+["dragleave","drop"].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.remove("over")}));
+dropZone.addEventListener("drop",e=>addFiles(e.dataTransfer.files));
 
-["dragenter", "dragover"].forEach((eventName) => {
-  dropZone.addEventListener(eventName, (event) => {
-    event.preventDefault();
-    dropZone.classList.add("dragover");
+function addFiles(files){
+  [...files].forEach(file=>{
+    if(!["image/png","image/jpeg","image/webp"].includes(file.type))return;
+    sources.push({id:crypto.randomUUID(),file,url:URL.createObjectURL(file),selected:true});
   });
-});
-
-["dragleave", "drop"].forEach((eventName) => {
-  dropZone.addEventListener(eventName, (event) => {
-    event.preventDefault();
-    dropZone.classList.remove("dragover");
-  });
-});
-
-dropZone.addEventListener("drop", (event) => {
-  addFiles(event.dataTransfer.files);
-});
-
-function addFiles(files) {
-  const allowed = ["image/png", "image/jpeg", "image/webp"];
-
-  Array.from(files).forEach((file) => {
-    if (!allowed.includes(file.type)) return;
-
-    sourceItems.push({
-      id: crypto.randomUUID(),
-      file,
-      url: URL.createObjectURL(file),
-      selected: true
-    });
-  });
-
-  fileInput.value = "";
+  fileInput.value="";
   renderSources();
-  statusText.textContent = `${sourceItems.length}장의 이미지를 준비했습니다.`;
+  status.textContent=`${sources.length}장의 이미지를 준비했습니다.`;
 }
-
-function renderSources() {
-  uploadCount.textContent = `${sourceItems.length}장`;
-
-  if (!sourceItems.length) {
-    sourceGrid.className = "card-grid empty-state";
-    sourceGrid.textContent = "이미지를 추가하면 여기에 미리보기가 표시됩니다.";
-    return;
-  }
-
-  sourceGrid.className = "card-grid";
-  sourceGrid.innerHTML = "";
-
-  sourceItems.forEach((item) => {
-    const card = document.createElement("article");
-    card.className = `preview-card${item.selected ? " selected" : ""}`;
-
-    const check = document.createElement("input");
-    check.type = "checkbox";
-    check.className = "card-check";
-    check.checked = item.selected;
-    check.addEventListener("change", () => {
-      item.selected = check.checked;
-      renderSources();
-    });
-
-    const imageWrap = document.createElement("div");
-    imageWrap.className = "preview-image-wrap";
-
-    const image = document.createElement("img");
-    image.src = item.url;
-    image.alt = item.file.name;
-    imageWrap.appendChild(image);
-
-    const info = document.createElement("div");
-    info.className = "card-info";
-    info.innerHTML = `<strong>${escapeHtml(item.file.name)}</strong><small>${formatSize(item.file.size)}</small>`;
-
-    card.append(check, imageWrap, info);
+function renderSources(){
+  $("sourceCount").textContent=`${sources.length}장`;
+  if(!sources.length){sourceGrid.className="grid empty";sourceGrid.textContent="이미지를 추가하면 미리보기가 표시됩니다.";return}
+  sourceGrid.className="grid";sourceGrid.innerHTML="";
+  sources.forEach(item=>{
+    const card=document.createElement("article");card.className=`card${item.selected?" selected":""}`;
+    card.innerHTML=`<input type="checkbox" ${item.selected?"checked":""}><div class="checker"><img src="${item.url}"></div><div class="info"><strong>${escapeHtml(item.file.name)}</strong><small>${formatSize(item.file.size)}</small></div>`;
+    card.querySelector("input").onchange=e=>{item.selected=e.target.checked;renderSources()};
     sourceGrid.appendChild(card);
   });
 }
+$("sourceAll").onclick=()=>{sources.forEach(x=>x.selected=true);renderSources()};
+$("sourceNone").onclick=()=>{sources.forEach(x=>x.selected=false);renderSources()};
+$("sourceDelete").onclick=()=>{sources.filter(x=>x.selected).forEach(x=>URL.revokeObjectURL(x.url));sources=sources.filter(x=>!x.selected);renderSources()};
 
-sourceSelectAll.addEventListener("click", () => {
-  sourceItems.forEach((item) => item.selected = true);
-  renderSources();
-});
-
-sourceClearAll.addEventListener("click", () => {
-  sourceItems.forEach((item) => item.selected = false);
-  renderSources();
-});
-
-deleteSelectedSources.addEventListener("click", () => {
-  const removed = sourceItems.filter((item) => item.selected);
-  removed.forEach((item) => URL.revokeObjectURL(item.url));
-  sourceItems = sourceItems.filter((item) => !item.selected);
-  renderSources();
-});
-
-processButton.addEventListener("click", async () => {
-  const targets = sourceItems.filter((item) => item.selected);
-
-  if (!targets.length) {
-    alert("처리할 이미지를 체크해주세요.");
-    return;
-  }
-
-  processButton.disabled = true;
-  resultItems.forEach((item) => URL.revokeObjectURL(item.url));
-  resultItems = [];
-  renderResults();
-
-  try {
-    const gridCount = Number(gridSelect.value);
-    const margin = clamp(Number(marginInput.value) || 0, 0, 150);
-    const tolerance = Number(toleranceInput.value);
-    const removeBackground = removeBackgroundInput.checked;
-    const dpi = Number(dpiSelect.value);
-    const total = targets.length * gridCount * gridCount;
-    let done = 0;
-
-    for (const source of targets) {
-      const image = await loadImage(source.file);
-      const sourceCanvas = imageToCanvas(image);
-
-      for (let row = 0; row < gridCount; row += 1) {
-        for (let col = 0; col < gridCount; col += 1) {
-          done += 1;
-          statusText.textContent = `${done}/${total} 요소 처리 중...`;
-
-          const cellCanvas = extractCell(sourceCanvas, row, col, gridCount);
-          let processed = processCell(cellCanvas, margin, tolerance, removeBackground);
-
-          const requiredMin = getRequiredMinimumSize();
-          if (miricanvasMode.checked) {
-            processed = normalizeCanvasSize(processed, requiredMin, 9800);
-          }
-
-          const rawBlob = await canvasToBlob(processed);
-          const pngBlob = await addPngDpiMetadata(rawBlob, dpi);
-
-          const baseName = source.file.name.replace(/\.[^.]+$/, "");
-          const index = row * gridCount + col + 1;
-          const filename = `${baseName}_element_${String(index).padStart(2, "0")}.png`;
-
-          const compliance = evaluateCompliance(
-            processed.width,
-            processed.height,
-            pngBlob.size,
-            requiredMin
-          );
-
-          resultItems.push({
-            id: crypto.randomUUID(),
-            filename,
-            blob: pngBlob,
-            url: URL.createObjectURL(pngBlob),
-            width: processed.width,
-            height: processed.height,
-            dpi,
-            size: pngBlob.size,
-            compliance,
-            selected: compliance.ok
-          });
-        }
+$("process").onclick=async()=>{
+  const targets=sources.filter(x=>x.selected);if(!targets.length)return alert("처리할 이미지를 선택해주세요.");
+  $("process").disabled=true;clearResults();
+  try{
+    const n=Number(gridSelect.value),margin=Math.max(0,Number(marginInput.value)||0),tol=Number(tolerance.value),merge=Number(mergeDistance.value)/100,alpha=Number(alphaThreshold.value);
+    const total=targets.length*n*n;let done=0;
+    for(const src of targets){
+      const img=await loadImage(src.file),canvas=imageToCanvas(img);
+      const boundaries=getGridBoundaries(canvas,n,gridMode.value,tol,alpha);
+      for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+        done++;status.textContent=`${done}/${total} 처리 중...`;
+        const cell=extractRect(canvas,boundaries.x[c],boundaries.y[r],boundaries.x[c+1]-boundaries.x[c],boundaries.y[r+1]-boundaries.y[r]);
+        let out=trimCell(cell,{margin,tol,merge,alpha,mode:cropMode.value,removeBg:removeBg.checked});
+        const required=getRequiredMin();
+        if(rulesMode.checked)out=normalizeSize(out,required,9800);
+        const raw=await canvasToBlob(out),blob=await addDpi(raw,Number(dpiSelect.value));
+        const base=src.file.name.replace(/\.[^.]+$/,""),index=r*n+c+1,filename=`${base}_element_${String(index).padStart(2,"0")}.png`;
+        const compliance=checkCompliance(out.width,out.height,blob.size,required);
+        results.push({id:crypto.randomUUID(),filename,blob,url:URL.createObjectURL(blob),width:out.width,height:out.height,size:blob.size,dpi:Number(dpiSelect.value),selected:true,compliance});
       }
     }
+    renderResults();resultPanel.classList.remove("hidden");
+    status.textContent=`완료: ${results.length}개 생성`;
+  }catch(e){console.error(e);alert(e.message||"처리 오류");status.textContent="처리 중 오류가 발생했습니다."}
+  finally{$("process").disabled=false}
+};
 
-    renderResults();
-    resultPanel.classList.remove("hidden");
-    const okCount = resultItems.filter((item) => item.compliance.ok).length;
-    statusText.textContent =
-      `완료: ${resultItems.length}개 생성 · 미리캔버스 기준 통과 ${okCount}개`;
-  } catch (error) {
-    console.error(error);
-    statusText.textContent = "처리 중 오류가 발생했습니다.";
-    alert(error.message || "이미지 처리 중 오류가 발생했습니다.");
-  } finally {
-    processButton.disabled = false;
-  }
-});
-
-function getRequiredMinimumSize() {
-  const selectedMode = sizeModeSelect.value;
-  if (selectedMode !== "auto") return Number(selectedMode);
-  return assetTypeSelect.value === "icon" ? 700 : 1500;
+function getGridBoundaries(canvas,n,mode,tol,alpha){
+  const xs=Array.from({length:n+1},(_,i)=>Math.round(i*canvas.width/n));
+  const ys=Array.from({length:n+1},(_,i)=>Math.round(i*canvas.height/n));
+  if(mode==="fixed"||n===1)return{x:xs,y:ys};
+  const mask=makeForegroundMask(canvas,tol,alpha,false);
+  const col=new Float64Array(canvas.width),row=new Float64Array(canvas.height);
+  for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(mask[y*canvas.width+x]){col[x]++;row[y]++}
+  smoothArray(col,Math.max(3,Math.round(canvas.width/200)));smoothArray(row,Math.max(3,Math.round(canvas.height/200)));
+  for(let k=1;k<n;k++){xs[k]=findValley(col,k*canvas.width/n,canvas.width/n*.22);ys[k]=findValley(row,k*canvas.height/n,canvas.height/n*.22)}
+  xs.sort((a,b)=>a-b);ys.sort((a,b)=>a-b);xs[0]=0;xs[n]=canvas.width;ys[0]=0;ys[n]=canvas.height;
+  return{x:xs,y:ys};
+}
+function findValley(arr,center,radius){
+  let from=Math.max(1,Math.floor(center-radius)),to=Math.min(arr.length-2,Math.ceil(center+radius)),best=Math.round(center),score=Infinity;
+  for(let i=from;i<=to;i++){const s=arr[i]+Math.abs(i-center)*.02;if(s<score){score=s;best=i}}
+  return best;
+}
+function smoothArray(arr,r){
+  const copy=Float64Array.from(arr);let sum=0;
+  for(let i=0;i<arr.length;i++){sum+=copy[i];if(i-r-1>=0)sum-=copy[i-r-1];arr[i]=sum/Math.min(i+1,r+1)}
 }
 
-function normalizeCanvasSize(canvas, minSize, maxSize) {
-  const currentMin = Math.min(canvas.width, canvas.height);
-  const currentMax = Math.max(canvas.width, canvas.height);
-
-  let scale = 1;
-
-  if (currentMin < minSize) {
-    scale = minSize / currentMin;
+function trimCell(canvas,opt){
+  const ctx=canvas.getContext("2d",{willReadFrequently:true}),data=ctx.getImageData(0,0,canvas.width,canvas.height);
+  if(opt.removeBg&&!hasTransparency(data.data,opt.alpha))floodBackground(data,canvas.width,canvas.height,opt.tol);
+  const mask=alphaMask(data.data,canvas.width,canvas.height,opt.alpha);
+  const comps=components(mask,canvas.width,canvas.height);
+  let box=mergeComponents(comps,canvas.width,canvas.height,opt.merge)||bboxFromMask(mask,canvas.width,canvas.height);
+  if(!box)return canvas;
+  const masked=document.createElement("canvas");masked.width=canvas.width;masked.height=canvas.height;masked.getContext("2d").putImageData(data,0,0);
+  const long=Math.max(box.maxX-box.minX+1,box.maxY-box.minY+1);
+  let m=Math.max(opt.margin,Math.round(long*.015));
+  if(opt.mode==="safe")m=Math.max(m,Math.round(long*.035));
+  if(opt.mode==="tight")m=Math.min(m,Math.max(2,Math.round(long*.006)));
+  let rect={x:box.minX-m,y:box.minY-m,w:box.maxX-box.minX+1+m*2,h:box.maxY-box.minY+1+m*2};
+  rect=clampRect(rect,masked.width,masked.height);
+  let out=extractRect(masked,rect.x,rect.y,rect.w,rect.h);
+  // 두 번째 패스: 결과 자체의 알파 경계를 다시 계산하여 세로/가로를 각각 재트림
+  const octx=out.getContext("2d",{willReadFrequently:true}),odata=octx.getImageData(0,0,out.width,out.height);
+  const obox=findAlphaBox(odata.data,out.width,out.height,opt.alpha);
+  if(obox){
+    const m2=Math.max(opt.mode==="tight"?2:Math.min(opt.margin,12),2);
+    const r2=clampRect({x:obox.minX-m2,y:obox.minY-m2,w:obox.maxX-obox.minX+1+m2*2,h:obox.maxY-obox.minY+1+m2*2},out.width,out.height);
+    out=extractRect(out,r2.x,r2.y,r2.w,r2.h);
   }
-
-  if (currentMax * scale > maxSize) {
-    scale = maxSize / currentMax;
-  }
-
-  if (Math.abs(scale - 1) < 0.001) return canvas;
-
-  const output = document.createElement("canvas");
-  output.width = Math.max(1, Math.round(canvas.width * scale));
-  output.height = Math.max(1, Math.round(canvas.height * scale));
-
-  const ctx = output.getContext("2d");
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(canvas, 0, 0, output.width, output.height);
-
-  return output;
+  return out;
 }
 
-function evaluateCompliance(width, height, bytes, minSize) {
-  const reasons = [];
-
-  if (Math.min(width, height) < minSize) {
-    reasons.push(`최소 크기 ${minSize}px 미달`);
-  }
-
-  if (Math.max(width, height) > 9800) {
-    reasons.push("최대 크기 9800px 초과");
-  }
-
-  if (bytes > 50 * 1024 * 1024) {
-    reasons.push("파일 크기 50MB 초과");
-  }
-
-  return {
-    ok: reasons.length === 0,
-    reasons
-  };
+function makeForegroundMask(canvas,tol,alpha,remove){
+  const ctx=canvas.getContext("2d",{willReadFrequently:true}),d=ctx.getImageData(0,0,canvas.width,canvas.height);
+  if(remove&&!hasTransparency(d.data,alpha))floodBackground(d,canvas.width,canvas.height,tol);
+  if(hasTransparency(d.data,alpha))return alphaMask(d.data,canvas.width,canvas.height,alpha);
+  const bg=borderColor(d.data,canvas.width,canvas.height),m=new Uint8Array(canvas.width*canvas.height);
+  for(let p=0;p<m.length;p++)m[p]=colorDistance(d.data,p,bg)>tol?1:0;
+  return m;
 }
-
-function imageToCanvas(image) {
-  const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth;
-  canvas.height = image.naturalHeight;
-  canvas.getContext("2d", { willReadFrequently: true }).drawImage(image, 0, 0);
-  return canvas;
+function hasTransparency(data,alpha){let c=0;for(let i=3;i<data.length;i+=4)if(data[i]<250)c++;return c>Math.max(20,data.length/4*.001)}
+function alphaMask(data,w,h,a){const m=new Uint8Array(w*h);for(let p=0;p<m.length;p++)if(data[p*4+3]>a)m[p]=1;return m}
+function findAlphaBox(data,w,h,a){return bboxFromMask(alphaMask(data,w,h,a),w,h)}
+function bboxFromMask(m,w,h){let minX=w,minY=h,maxX=-1,maxY=-1;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(m[y*w+x]){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y)}return maxX<0?null:{minX,minY,maxX,maxY}}
+function components(mask,w,h){
+  const seen=new Uint8Array(w*h),out=[],q=new Int32Array(w*h);
+  for(let s=0;s<w*h;s++){if(seen[s]||!mask[s])continue;let head=0,tail=0;q[tail++]=s;seen[s]=1;let minX=w,minY=h,maxX=-1,maxY=-1,area=0;
+    while(head<tail){const p=q[head++],x=p%w,y=Math.floor(p/w);minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);area++;
+      for(const [nx,ny] of [[x+1,y],[x-1,y],[x,y+1],[x,y-1],[x+1,y+1],[x-1,y-1],[x+1,y-1],[x-1,y+1]]){if(nx<0||ny<0||nx>=w||ny>=h)continue;const np=ny*w+nx;if(!seen[np]&&mask[np]){seen[np]=1;q[tail++]=np}}
+    }out.push({minX,minY,maxX,maxY,area});
+  }return out;
 }
-
-function extractCell(sourceCanvas, row, col, gridCount) {
-  const startX = Math.floor(col * sourceCanvas.width / gridCount);
-  const endX = Math.floor((col + 1) * sourceCanvas.width / gridCount);
-  const startY = Math.floor(row * sourceCanvas.height / gridCount);
-  const endY = Math.floor((row + 1) * sourceCanvas.height / gridCount);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = endX - startX;
-  canvas.height = endY - startY;
-
-  canvas.getContext("2d", { willReadFrequently: true }).drawImage(
-    sourceCanvas,
-    startX, startY, canvas.width, canvas.height,
-    0, 0, canvas.width, canvas.height
-  );
-
-  return canvas;
+function mergeComponents(comps,w,h,ratio){
+  if(!comps.length)return null;const arr=[...comps].sort((a,b)=>b.area-a.area),noise=w*h*.00005;let m={...arr[0]};
+  for(const c of arr.slice(1)){if(c.area<noise)continue;const d=rectGap(m,c),limit=Math.max(m.maxX-m.minX+1,m.maxY-m.minY+1)*ratio;if(d<=limit){m.minX=Math.min(m.minX,c.minX);m.minY=Math.min(m.minY,c.minY);m.maxX=Math.max(m.maxX,c.maxX);m.maxY=Math.max(m.maxY,c.maxY);m.area+=c.area}}
+  return m;
 }
-
-function processCell(cellCanvas, margin, tolerance, removeBackground) {
-  const ctx = cellCanvas.getContext("2d", { willReadFrequently: true });
-  const imageData = ctx.getImageData(0, 0, cellCanvas.width, cellCanvas.height);
-
-  if (removeBackground && !hasRealTransparency(imageData.data)) {
-    floodRemoveBackground(imageData, cellCanvas.width, cellCanvas.height, tolerance);
-  }
-
-  const bbox = findAlphaBoundingBox(
-    imageData.data,
-    cellCanvas.width,
-    cellCanvas.height
-  );
-
-  if (!bbox) return cellCanvas;
-
-  const masked = document.createElement("canvas");
-  masked.width = cellCanvas.width;
-  masked.height = cellCanvas.height;
-  masked.getContext("2d").putImageData(imageData, 0, 0);
-
-  const minX = Math.max(0, bbox.minX - margin);
-  const minY = Math.max(0, bbox.minY - margin);
-  const maxX = Math.min(cellCanvas.width - 1, bbox.maxX + margin);
-  const maxY = Math.min(cellCanvas.height - 1, bbox.maxY + margin);
-
-  const output = document.createElement("canvas");
-  output.width = Math.max(1, maxX - minX + 1);
-  output.height = Math.max(1, maxY - minY + 1);
-
-  output.getContext("2d").drawImage(
-    masked,
-    minX, minY, output.width, output.height,
-    0, 0, output.width, output.height
-  );
-
-  return output;
+function rectGap(a,b){const dx=Math.max(0,Math.max(a.minX-b.maxX,b.minX-a.maxX)),dy=Math.max(0,Math.max(a.minY-b.maxY,b.minY-a.maxY));return Math.hypot(dx,dy)}
+function floodBackground(d,w,h,tol){
+  const data=d.data,bg=borderColor(data,w,h),seen=new Uint8Array(w*h),q=new Int32Array(w*h);let head=0,tail=0;
+  const add=(x,y)=>{if(x<0||y<0||x>=w||y>=h)return;const p=y*w+x;if(seen[p]||colorDistance(data,p,bg)>tol)return;seen[p]=1;q[tail++]=p};
+  for(let x=0;x<w;x++){add(x,0);add(x,h-1)}for(let y=0;y<h;y++){add(0,y);add(w-1,y)}
+  while(head<tail){const p=q[head++],x=p%w,y=Math.floor(p/w);add(x+1,y);add(x-1,y);add(x,y+1);add(x,y-1)}
+  for(let p=0;p<seen.length;p++)if(seen[p])data[p*4+3]=0;
 }
-
-function hasRealTransparency(data) {
-  let count = 0;
-  const pixels = data.length / 4;
-
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] < 250) count += 1;
-  }
-
-  return count > Math.max(20, pixels * 0.001);
+function borderColor(data,w,h){
+  const s=[],sx=Math.max(1,Math.floor(w/30)),sy=Math.max(1,Math.floor(h/30)),push=(x,y)=>{const i=(y*w+x)*4;s.push([data[i],data[i+1],data[i+2]])};
+  for(let x=0;x<w;x+=sx){push(x,0);push(x,h-1)}for(let y=0;y<h;y+=sy){push(0,y);push(w-1,y)}
+  return [0,1,2].map(k=>{const a=s.map(v=>v[k]).sort((a,b)=>a-b);return a[Math.floor(a.length/2)]});
 }
+function colorDistance(data,p,bg){const i=p*4,dr=data[i]-bg[0],dg=data[i+1]-bg[1],db=data[i+2]-bg[2];return Math.hypot(dr,dg,db)}
+function clampRect(r,w,h){const x=Math.max(0,Math.round(r.x)),y=Math.max(0,Math.round(r.y)),right=Math.min(w,Math.round(r.x+r.w)),bottom=Math.min(h,Math.round(r.y+r.h));return{x,y,w:Math.max(1,right-x),h:Math.max(1,bottom-y)}}
+function extractRect(src,x,y,w,h){const c=document.createElement("canvas");c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));c.getContext("2d").drawImage(src,Math.round(x),Math.round(y),c.width,c.height,0,0,c.width,c.height);return c}
 
-function floodRemoveBackground(imageData, width, height, tolerance) {
-  const data = imageData.data;
-  const bg = estimateBorderColor(data, width, height);
-  const visited = new Uint8Array(width * height);
-  const queue = new Int32Array(width * height);
-  let head = 0;
-  let tail = 0;
+function getRequiredMin(){if(sizeSelect.value!=="auto")return Number(sizeSelect.value);return assetType.value==="icon"?700:1500}
+function normalizeSize(c,min,max){const mn=Math.min(c.width,c.height),mx=Math.max(c.width,c.height);let s=mn<min?min/mn:1;if(mx*s>max)s=max/mx;if(Math.abs(s-1)<.001)return c;const o=document.createElement("canvas");o.width=Math.round(c.width*s);o.height=Math.round(c.height*s);const ctx=o.getContext("2d");ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";ctx.drawImage(c,0,0,o.width,o.height);return o}
+function checkCompliance(w,h,bytes,min){const reasons=[];if(Math.min(w,h)<min)reasons.push(`최소 ${min}px 미달`);if(Math.max(w,h)>9800)reasons.push("9800px 초과");if(bytes>50*1024*1024)reasons.push("50MB 초과");return{ok:!reasons.length,reasons}}
 
-  function enqueue(x, y) {
-    if (x < 0 || y < 0 || x >= width || y >= height) return;
-    const pos = y * width + x;
-    if (visited[pos]) return;
-    if (!colorClose(data, pos, bg, tolerance)) return;
-    visited[pos] = 1;
-    queue[tail++] = pos;
-  }
-
-  for (let x = 0; x < width; x += 1) {
-    enqueue(x, 0);
-    enqueue(x, height - 1);
-  }
-
-  for (let y = 0; y < height; y += 1) {
-    enqueue(0, y);
-    enqueue(width - 1, y);
-  }
-
-  while (head < tail) {
-    const pos = queue[head++];
-    const x = pos % width;
-    const y = Math.floor(pos / width);
-    enqueue(x + 1, y);
-    enqueue(x - 1, y);
-    enqueue(x, y + 1);
-    enqueue(x, y - 1);
-  }
-
-  for (let pos = 0; pos < visited.length; pos += 1) {
-    if (visited[pos]) data[pos * 4 + 3] = 0;
-  }
-}
-
-function estimateBorderColor(data, width, height) {
-  const samples = [];
-  const stepX = Math.max(1, Math.floor(width / 24));
-  const stepY = Math.max(1, Math.floor(height / 24));
-
-  const sample = (x, y) => {
-    const i = (y * width + x) * 4;
-    samples.push([data[i], data[i + 1], data[i + 2]]);
-  };
-
-  for (let x = 0; x < width; x += stepX) {
-    sample(x, 0);
-    sample(x, height - 1);
-  }
-
-  for (let y = 0; y < height; y += stepY) {
-    sample(0, y);
-    sample(width - 1, y);
-  }
-
-  const median = (index) => {
-    const values = samples.map((s) => s[index]).sort((a, b) => a - b);
-    return values[Math.floor(values.length / 2)];
-  };
-
-  return [median(0), median(1), median(2)];
-}
-
-function colorClose(data, pos, bg, tolerance) {
-  const i = pos * 4;
-  const dr = data[i] - bg[0];
-  const dg = data[i + 1] - bg[1];
-  const db = data[i + 2] - bg[2];
-  return Math.sqrt(dr * dr + dg * dg + db * db) <= tolerance;
-}
-
-function findAlphaBoundingBox(data, width, height) {
-  let minX = width;
-  let minY = height;
-  let maxX = -1;
-  let maxY = -1;
-
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const alpha = data[(y * width + x) * 4 + 3];
-      if (alpha > 12) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-    }
-  }
-
-  return maxX < 0 ? null : { minX, minY, maxX, maxY };
-}
-
-function renderResults() {
-  resultCount.textContent = `${resultItems.length}개`;
-  resultGrid.innerHTML = "";
-
-  resultItems.forEach((item) => {
-    const card = document.createElement("article");
-    card.className = `preview-card${item.selected ? " selected" : ""}`;
-
-    const check = document.createElement("input");
-    check.type = "checkbox";
-    check.className = "card-check";
-    check.checked = item.selected;
-    check.addEventListener("change", () => {
-      item.selected = check.checked;
-      renderResults();
-    });
-
-    const imageWrap = document.createElement("div");
-    imageWrap.className = "preview-image-wrap";
-
-    const image = document.createElement("img");
-    image.src = item.url;
-    image.alt = item.filename;
-    imageWrap.appendChild(image);
-
-    const info = document.createElement("div");
-    info.className = "card-info";
-
-    const complianceText = item.compliance.ok
-      ? `<span class="compliance ok">규정 통과</span>`
-      : `<span class="compliance warn">${escapeHtml(item.compliance.reasons.join(", "))}</span>`;
-
-    info.innerHTML = `
-      <strong>${escapeHtml(item.filename)}</strong>
-      <small>${item.width}×${item.height}px · ${item.dpi}dpi · ${formatSize(item.size)}</small>
-      ${complianceText}
-    `;
-
-    card.append(check, imageWrap, info);
-    resultGrid.appendChild(card);
+function renderResults(){
+  $("resultCount").textContent=`${results.length}개`;resultGrid.innerHTML="";
+  results.forEach(item=>{
+    const card=document.createElement("article");card.className=`card${item.selected?" selected":""}`;
+    const badge=item.compliance.ok?`<span class="badge ok">규정 통과</span>`:`<span class="badge warn">${escapeHtml(item.compliance.reasons.join(", "))}</span>`;
+    card.innerHTML=`<input type="checkbox" ${item.selected?"checked":""}><div class="checker"><img src="${item.url}"></div><div class="info"><strong>${escapeHtml(item.filename)}</strong><small>${item.width}×${item.height}px · ${item.dpi}dpi · ${formatSize(item.size)}</small>${badge}</div>`;
+    card.querySelector("input").onchange=e=>{item.selected=e.target.checked;renderResults()};resultGrid.appendChild(card);
   });
-
-  const selectedCount = resultItems.filter((item) => item.selected).length;
-  downloadSelectedButton.disabled = selectedCount === 0;
-  downloadZipButton.disabled = selectedCount === 0;
+  const n=results.filter(x=>x.selected).length;$("downloadFiles").disabled=!n;$("downloadZip").disabled=!n;
 }
+$("resultAll").onclick=()=>{results.forEach(x=>x.selected=true);renderResults()};
+$("resultNone").onclick=()=>{results.forEach(x=>x.selected=false);renderResults()};
+$("downloadFiles").onclick=()=>results.filter(x=>x.selected).forEach((x,i)=>setTimeout(()=>downloadBlob(x.blob,x.filename),i*200));
+$("downloadZip").onclick=async()=>{
+  const sel=results.filter(x=>x.selected);if(!sel.length)return;
+  const zip=new JSZip();sel.forEach(x=>zip.file(x.filename,x.blob));
+  zip.file("miricanvas_report.txt",sel.map(x=>`${x.filename}\t${x.width}x${x.height}\t${x.dpi}dpi\t${formatSize(x.size)}\t${x.compliance.ok?"통과":x.compliance.reasons.join(", ")}`).join("\n"));
+  downloadBlob(await zip.generateAsync({type:"blob",compression:"DEFLATE"}),"miricanvas_cropped.zip");
+};
+$("reset").onclick=()=>{sources.forEach(x=>URL.revokeObjectURL(x.url));clearResults();sources=[];renderSources();renderResults();resultPanel.classList.add("hidden");status.textContent="이미지를 추가해주세요."};
 
-resultSelectAll.addEventListener("click", () => {
-  resultItems.forEach((item) => item.selected = true);
-  renderResults();
-});
-
-resultClearAll.addEventListener("click", () => {
-  resultItems.forEach((item) => item.selected = false);
-  renderResults();
-});
-
-downloadSelectedButton.addEventListener("click", async () => {
-  const selected = resultItems.filter((item) => item.selected);
-
-  if (!selected.length) return;
-
-  if (directoryHandle) {
-    try {
-      for (const item of selected) {
-        const handle = await directoryHandle.getFileHandle(item.filename, { create: true });
-        const writable = await handle.createWritable();
-        await writable.write(item.blob);
-        await writable.close();
-      }
-      statusText.textContent = `${selected.length}개 파일을 선택한 폴더에 저장했습니다.`;
-      return;
-    } catch (error) {
-      console.warn(error);
-    }
-  }
-
-  selected.forEach((item, index) => {
-    setTimeout(() => downloadBlob(item.blob, item.filename), index * 250);
-  });
-});
-
-downloadZipButton.addEventListener("click", async () => {
-  const selected = resultItems.filter((item) => item.selected);
-  if (!selected.length) return;
-  if (typeof JSZip === "undefined") {
-    alert("ZIP 라이브러리를 불러오지 못했습니다.");
-    return;
-  }
-
-  statusText.textContent = "ZIP 파일 생성 중...";
-  const zip = new JSZip();
-  selected.forEach((item) => zip.file(item.filename, item.blob));
-
-  const reportLines = selected.map((item) => {
-    const result = item.compliance.ok ? "통과" : item.compliance.reasons.join(", ");
-    return `${item.filename}\t${item.width}x${item.height}px\t${item.dpi}dpi\t${formatSize(item.size)}\t${result}`;
-  });
-
-  zip.file(
-    "miricanvas_compliance_report.txt",
-    [
-      "미리캔버스 업로드 규정 검사 결과",
-      "",
-      ...reportLines
-    ].join("\n")
-  );
-
-  const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
-  downloadBlob(zipBlob, "miricanvas_cropped_selected.zip");
-  statusText.textContent = `선택한 ${selected.length}개 파일을 ZIP으로 저장했습니다.`;
-});
-
-chooseFolderButton.addEventListener("click", async () => {
-  if (!window.showDirectoryPicker) {
-    alert("이 브라우저에서는 저장 폴더 선택을 지원하지 않습니다. Chrome 또는 Edge에서 사용해주세요.");
-    return;
-  }
-
-  try {
-    directoryHandle = await window.showDirectoryPicker();
-    chooseFolderButton.textContent = "📁 저장 폴더 선택됨";
-  } catch (error) {
-    if (error.name !== "AbortError") console.error(error);
-  }
-});
-
-resetButton.addEventListener("click", () => {
-  sourceItems.forEach((item) => URL.revokeObjectURL(item.url));
-  resultItems.forEach((item) => URL.revokeObjectURL(item.url));
-  sourceItems = [];
-  resultItems = [];
-  directoryHandle = null;
-  renderSources();
-  renderResults();
-  resultPanel.classList.add("hidden");
-  chooseFolderButton.textContent = "📁 저장 폴더 선택";
-  statusText.textContent = "이미지를 추가해주세요.";
-});
-
-function loadImage(file) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    const url = URL.createObjectURL(file);
-
-    image.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(image);
-    };
-
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error(`${file.name} 파일을 열 수 없습니다.`));
-    };
-
-    image.src = url;
-  });
-}
-
-function canvasToBlob(canvas) {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) reject(new Error("PNG 생성에 실패했습니다."));
-      else resolve(blob);
-    }, "image/png");
-  });
-}
-
-async function addPngDpiMetadata(blob, dpi) {
-  const buffer = new Uint8Array(await blob.arrayBuffer());
-
-  if (
-    buffer.length < 33 ||
-    buffer[0] !== 137 ||
-    buffer[1] !== 80 ||
-    buffer[2] !== 78 ||
-    buffer[3] !== 71
-  ) {
-    return blob;
-  }
-
-  const pixelsPerMeter = Math.round(dpi / 0.0254);
-  const data = new Uint8Array(9);
-  writeUint32(data, 0, pixelsPerMeter);
-  writeUint32(data, 4, pixelsPerMeter);
-  data[8] = 1;
-
-  const type = new TextEncoder().encode("pHYs");
-  const crcInput = new Uint8Array(type.length + data.length);
-  crcInput.set(type, 0);
-  crcInput.set(data, type.length);
-
-  const chunk = new Uint8Array(4 + 4 + 9 + 4);
-  writeUint32(chunk, 0, 9);
-  chunk.set(type, 4);
-  chunk.set(data, 8);
-  writeUint32(chunk, 17, crc32(crcInput));
-
-  const output = new Uint8Array(buffer.length + chunk.length);
-  output.set(buffer.slice(0, 33), 0);
-  output.set(chunk, 33);
-  output.set(buffer.slice(33), 33 + chunk.length);
-
-  return new Blob([output], { type: "image/png" });
-}
-
-function writeUint32(array, offset, value) {
-  array[offset] = (value >>> 24) & 255;
-  array[offset + 1] = (value >>> 16) & 255;
-  array[offset + 2] = (value >>> 8) & 255;
-  array[offset + 3] = value & 255;
-}
-
-function crc32(bytes) {
-  let crc = 0xffffffff;
-
-  for (const byte of bytes) {
-    crc ^= byte;
-
-    for (let i = 0; i < 8; i += 1) {
-      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
-    }
-  }
-
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1200);
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function formatSize(bytes) {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
-}
-
-function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[char]);
-}
+function clearResults(){results.forEach(x=>URL.revokeObjectURL(x.url));results=[]}
+function imageToCanvas(img){const c=document.createElement("canvas");c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext("2d",{willReadFrequently:true}).drawImage(img,0,0);return c}
+function loadImage(file){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);res(img)};img.onerror=()=>rej(new Error("이미지를 열 수 없습니다."));img.src=url})}
+function canvasToBlob(c){return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("PNG 생성 실패")),"image/png"))}
+async function addDpi(blob,dpi){const b=new Uint8Array(await blob.arrayBuffer());if(b.length<33)return blob;const ppm=Math.round(dpi/.0254),data=new Uint8Array(9);write32(data,0,ppm);write32(data,4,ppm);data[8]=1;const type=new TextEncoder().encode("pHYs"),crcIn=new Uint8Array(13);crcIn.set(type);crcIn.set(data,4);const chunk=new Uint8Array(21);write32(chunk,0,9);chunk.set(type,4);chunk.set(data,8);write32(chunk,17,crc32(crcIn));const out=new Uint8Array(b.length+21);out.set(b.slice(0,33));out.set(chunk,33);out.set(b.slice(33),54);return new Blob([out],{type:"image/png"})}
+function write32(a,o,v){a[o]=v>>>24;a[o+1]=v>>>16;a[o+2]=v>>>8;a[o+3]=v}
+function crc32(bytes){let c=0xffffffff;for(const x of bytes){c^=x;for(let i=0;i<8;i++)c=(c>>>1)^(0xedb88320&-(c&1))}return(c^0xffffffff)>>>0}
+function downloadBlob(blob,name){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+function formatSize(n){return n<1048576?`${(n/1024).toFixed(0)}KB`:`${(n/1048576).toFixed(1)}MB`}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
